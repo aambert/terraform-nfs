@@ -1,6 +1,21 @@
+# MacOS
+.DS_Store
+
 # Compiled files
 *.tfstate
 *.tfstate.backup
 
 # Module directory
 .terraform/
+
+# Lock file
+.terraform.tfstate.lock.info
+
+# .tfvars files
+*.tfvars
+
+# ssl_keys
+ssl_keys/
+
+# lack of interpolation protection
+variables.tf
