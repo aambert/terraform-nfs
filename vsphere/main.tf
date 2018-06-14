@@ -17,7 +17,7 @@ variable "hacluster_vip" {}
 variable "jc_x_connect_key" {}
 
 provider "vsphere" {
-  version        = "~> 1.3"
+  version        = "~> 1.6"
   user           = "${var.vsphere_user}"
   password       = "${var.vsphere_password}"
   vsphere_server = "${var.vsphere_server}"
@@ -52,7 +52,7 @@ data "vsphere_virtual_machine" "template" {
 
 resource "vsphere_virtual_machine" "vm" {
   count            = "2"
-  name             = "${var.vm_name}${count.index}"
+  name             = "${var.vm_name}${count.index +1}"
   resource_pool_id = "${data.vsphere_resource_pool.pool.id}"
   datastore_id     = "${data.vsphere_datastore.datastore.id}"
 
@@ -89,7 +89,7 @@ resource "vsphere_virtual_machine" "vm" {
 
     customize {
       linux_options {
-        host_name = "${var.vm_name}${count.index}"
+        host_name = "${var.vm_name}${count.index +1}"
         domain    = "${var.vm_domain}"
         time_zone = "${var.vm_time_zone}"
       }
@@ -101,9 +101,7 @@ resource "vsphere_virtual_machine" "vm" {
   # Run commands with remote-exec over ssh
   provisioner "remote-exec" {
     inline = [
-      #"sudo hostnamectl set-hostname ${var.vm_name}.${var.vm_domain}",
-      #"sudo sed -i '2i 127.0.0.1       ${var.vm_name}.${var.vm_domain}' /etc/hosts",
-      #"sudo sed -i '3d' /etc/hosts",
+      "sudo hostnamectl set-hostname ${var.vm_name}${count.index +1}.${var.vm_domain}",
       "sudo apt-get update",
       "sudo apt-get upgrade -y",
       "sudo apt-get autoremove -y",
@@ -120,24 +118,23 @@ resource "vsphere_virtual_machine" "vm" {
       "sudo pip install suds-jurko",
       "sudo pip install requests",
       "sudo apt-get install -qy pcs pacemaker fence-agents",
-      "MYIP=$(ifconfig ens160 | grep 'inet addr' | cut -d ':' -f 2 | cut -d ' ' -f 1)",
+      "MYIP=$(ifconfig eth0 | grep 'inet addr' | cut -d ':' -f 2 | cut -d ' ' -f 1)",
       "echo \"# Disable IPv6\" | sudo tee -a /etc/default/pcsd",
       "echo \"PCSD_BIND_ADDR='$MYIP'\" | sudo tee -a /etc/default/pcsd",
       "printf '${var.hacluster_password}\n${var.hacluster_password}' | sudo passwd hacluster",
-      "sudo systemctl start pcsd",
+      "sudo systemctl restart pcsd",
       "sudo systemctl enable pcsd",
       "sudo systemctl enable corosync",
       "sudo systemctl enable pacemaker",
-      "echo Automate me please",
-      #"sudo pcs cluster auth nfs0.${var.vm_domain} nfs1.${var.vm_domain}",
-      #"sudo pcs cluster setup --name nfs_cluster nfs0.${var.vm_domain} nfs1.${var.vm_domain}",
+      #"sleep 60",
+      #"sudo pcs cluster auth -u hacluster -p ${var.hacluster_password} nfs1.${var.vm_domain} nfs2.${var.vm_domain}",
+      #"sudo pcs cluster setup --name nfs_cluster nfs1.${var.vm_domain} nfs2.${var.vm_domain}",
       #"sudo pcs cluster start --all",
       #"sudo pcs property set stonith-enabled=false",
       #"sudo pcs property set no-quorum-policy=ignore",
       #"sudo pcs resource create virtual_ip ocf:heartbeat:IPaddr2 ip=${var.hacluster_vip} cidr_netmask=32 op monitor interval=30s",
       #"curl --silent --show-error --header 'x-connect-key: ${var.jc_x_connect_key}' https://kickstart.jumpcloud.com/Kickstart | sudo bash",
-      #"sudo rm -f 2",
-      "sudo rm -f /home/ubuntu/shutdown.sh",
+      #"sudo rm -f 2"
     ]
   }
 
